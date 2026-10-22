@@ -1,5 +1,16 @@
 # AEGIS MVP Implementation Plan
 
+## Approved Design Decisions (post-review)
+
+1. **Report evidence field:** Sanitised (redacted) evidence is exported under the JSON key
+   `evidence`. The internal raw `evidence` field is never serialised.
+2. **Bandit invocation:** Use subprocess with a safe argument list (`shell=False`) and
+   `bandit -f json`. Do not use Bandit's internal Python API.
+3. **Path containment:** Strengthen beyond `Path.resolve()` — validate all traversed paths
+   remain inside the resolved project root; do not follow symlinks outside it.
+   Privacy verification uses both static grep and runtime assertions in the e2e test.
+
+
 ## Top-Level Overview
 
 **Goal:** Build a working CLI security scanner that accepts a local project path, runs
@@ -73,7 +84,7 @@ AEGIS/
 
 ### Sub-Task 1 — Repository Scaffold
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Establish the Python package, virtual environment instructions, dependency files, and
@@ -106,7 +117,7 @@ quality tooling so all subsequent sub-tasks have a runnable base.
 
 ### Sub-Task 2 — Data Models
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Define the `Finding` dataclass and `Severity` enum that every scanner and the report writer
@@ -132,7 +143,7 @@ share. Establishing this contract first prevents interface drift across sub-task
 
 ### Sub-Task 3 — Redactor
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Implement a deterministic redaction layer that strips secret values from evidence strings

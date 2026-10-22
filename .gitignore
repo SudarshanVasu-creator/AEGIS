@@ -13,32 +13,56 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+wheels/
+pip-wheel-metadata/
 .eggs/
 *.egg
 
 # === Environment / secrets ===
 .env
-*.env
+.env.*
+!.env.example
 *.secret
 *.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+service-account*.json
 
 # === Test & coverage artefacts ===
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 coverage.xml
+test-results/
+.tox/
+.nox/
 
-# === AEGIS generated reports ===
+# === AEGIS generated reports and scan output ===
 reports/
+report.json
+scan-report*.json
+scan-report*.html
+scan-results/
+private-scans/
+scanned-projects/
 *.aegis-report.json
 
 # === IDEs ===
-.vscode/settings.json
+.vscode/
 .idea/
 
 # === OS ===
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# === Temporary files ===
+*.tmp
+*.temp
+*.log
 
 # === Scanned projects ===
 # Never commit a real project being scanned.
