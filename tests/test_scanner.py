@@ -348,7 +348,9 @@ class TestScannerFailures:
         err = result.errors[0]
         assert err.scanner == "secret_scanner"
         assert err.error_type == "RuntimeError"
-        assert "disk io error" in err.message
+        # Raw exception text must NOT appear; only the safe generic message.
+        assert "disk io error" not in err.message
+        assert "RuntimeError" in err.message
 
     def test_bandit_timeout_recorded_as_error(self, tmp_path):
         import subprocess
@@ -369,17 +371,26 @@ class TestScannerFailures:
         assert result.findings[0].rule_id == "AEGIS-SECRET-PASSWORD"
 
     def test_error_message_does_not_contain_raw_evidence(self, tmp_path):
-        """ScannerError messages must not contain raw source code."""
+        """ScannerError message must not expose raw exception text or injected secrets."""
         raw_secret = "raw-secret-value-that-must-not-leak"
         with patch("aegis.scanner._secrets.scan",
                    side_effect=RuntimeError(f"Error near: {raw_secret}")), \
              patch("aegis.scanner._bandit.scan", return_value=[]):
             result = run_scan(tmp_path)
-        # The scanner error captures the exception message, but the
-        # orchestrator must not add raw evidence beyond what the exception holds.
-        # We verify the error is recorded and has a scanner name.
         assert len(result.errors) == 1
-        assert result.errors[0].scanner == "secret_scanner"
+        err = result.errors[0]
+        assert err.scanner == "secret_scanner"
+        # The synthetic secret must be absent from the error message.
+        assert raw_secret not in err.message, (
+            "Injected synthetic secret must not appear in ScannerError.message"
+        )
+        # The synthetic secret must also be absent from the serialised report JSON.
+        serialised = json.dumps({"scanner_errors": [
+            {"scanner": err.scanner, "error_type": err.error_type, "message": err.message}
+        ]})
+        assert raw_secret not in serialised, (
+            "Injected synthetic secret must not appear in serialised report JSON"
+        )
 
     def test_succeeded_false_on_partial(self, tmp_path):
         with patch("aegis.scanner._secrets.scan", side_effect=RuntimeError("x")), \

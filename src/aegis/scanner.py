@@ -221,7 +221,7 @@ def run_scan(
         errors.append(ScannerError(
             scanner="secret_scanner",
             error_type=type(exc).__name__,
-            message=str(exc),
+            message=f"Scanner failed with {type(exc).__name__}.",
         ))
 
     # ------------------------------------------------------------------ #
@@ -237,7 +237,7 @@ def run_scan(
         errors.append(ScannerError(
             scanner="bandit_runner",
             error_type=type(exc).__name__,
-            message=str(exc),
+            message=f"Scanner failed with {type(exc).__name__}.",
         ))
 
     # ------------------------------------------------------------------ #

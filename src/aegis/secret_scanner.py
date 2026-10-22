@@ -230,10 +230,16 @@ RULES: list[_Rule] = [
 def _is_safe_path(path: Path, root: Path) -> bool:
     """Return True only if *path* is inside *root* and is a regular file.
 
-    Resolves symlinks on *path* and rejects anything that escapes *root*.
+    Rejects symlinks by checking the *original* path before any resolution.
     Both *path* and *root* must already be resolved (absolute, no symlinks).
     """
+    # Reject symlinks on the original (unresolved) path.  Checking after
+    # resolve() would test whether the *target* is a symlink, not whether
+    # the discovered entry itself is one — that check is always False for a
+    # resolved target, making it useless as a guard.
     try:
+        if path.is_symlink():
+            return False
         resolved = path.resolve()
     except (OSError, ValueError):
         return False
@@ -242,7 +248,7 @@ def _is_safe_path(path: Path, root: Path) -> bool:
         resolved.relative_to(root)
     except ValueError:
         return False
-    return resolved.is_file() and not resolved.is_symlink()
+    return resolved.is_file()
 
 
 def _is_excluded_dir(part: str) -> bool:

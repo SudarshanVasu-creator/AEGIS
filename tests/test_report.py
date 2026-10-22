@@ -441,6 +441,33 @@ class TestScannerErrors:
         scanner_names = {e["scanner"] for e in data["scanner_errors"]}
         assert scanner_names == {"secret_scanner", "bandit_runner"}
 
+    def test_already_sanitized_scanner_error_serialised_faithfully(self, tmp_path):
+        """A ScannerError whose message is already sanitized is written verbatim to the report.
+
+        This verifies that write_report serialises the message field of a
+        ScannerError without alteration when that message contains no
+        sensitive content — i.e. it is a round-trip fidelity check, not a
+        sanitization check.
+        """
+        synthetic_secret = "ghp_SyntheticTokenThatMustNotAppear1234"
+        # Safe message as produced by the fixed scanner.py — exception text excluded.
+        safe_message = "Scanner failed with RuntimeError."
+        err = ScannerError(
+            scanner="secret_scanner",
+            error_type="RuntimeError",
+            message=safe_message,
+        )
+        result = _make_result(status=ScanStatus.PARTIAL, errors=[err])
+        out = tmp_path / "report.json"
+        write_report(result, out)
+        report_json = out.read_text(encoding="utf-8")
+        # The safe message is preserved verbatim in the serialised output.
+        assert safe_message in report_json
+        # The synthetic secret was never placed in the ScannerError, so it must be absent.
+        assert synthetic_secret not in report_json, (
+            "Synthetic secret must not appear in report JSON"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Unicode

@@ -422,16 +422,53 @@ class TestPathSafety:
         reason="Symlink creation on Windows requires elevated privileges or Developer Mode",
     )
     def test_symlink_outside_root_skipped(self, tmp_path):
-        """A symlink pointing outside the project root must be skipped."""
+        """A symlink pointing outside the project root must be skipped.
+
+        This guards against the symlink-escape vulnerability: a file inside
+        the project that is a symlink to a path outside the project root must
+        not be read.  _is_safe_path() checks is_symlink() on the *original*
+        path (before resolve()) so that the check cannot be bypassed by the
+        fact that the resolved target is itself a regular file.
+        """
         outside = tmp_path.parent / "outside_secret.py"
+        # Use a fake value that does not match any real credential format.
         outside.write_text("password = 'FakeSuperSecretPwd99'\n", encoding="utf-8")
         link = tmp_path / "link_to_outside.py"
         link.symlink_to(outside)
         findings = scan(tmp_path)
-        # The symlink itself is excluded (_is_safe_path rejects symlinks);
-        # we assert no finding whose file resolves outside the project root
-        assert not any(f.file == "link_to_outside.py" for f in findings)
+        # The symlink must be excluded by _is_safe_path().
+        assert not any(f.file == "link_to_outside.py" for f in findings), (
+            "Symlink pointing outside project root must not appear in findings"
+        )
+        # The secret value from the outside file must not appear in any finding.
+        assert not any("FakeSuperSecretPwd99" in f.redacted for f in findings), (
+            "Secret from symlink target outside root must not leak into findings"
+        )
         outside.unlink(missing_ok=True)
+
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Symlink creation on Windows requires elevated privileges or Developer Mode",
+    )
+    def test_symlink_inside_root_also_skipped(self, tmp_path):
+        """A symlink whose target is inside the project root must also be skipped.
+
+        Symlinks are always rejected regardless of where their target resides,
+        to prevent any path-traversal or double-read confusion.
+        """
+        real_file = tmp_path / "real_secret.py"
+        real_file.write_text("api_key = 'fake-api-key-value-abc123xyz789'\n", encoding="utf-8")
+        link = tmp_path / "link_to_real.py"
+        link.symlink_to(real_file)
+        findings = scan(tmp_path)
+        # The real file is scanned normally; the symlink is rejected.
+        assert not any(f.file == "link_to_real.py" for f in findings), (
+            "Symlink inside project root must not appear as a separate finding"
+        )
+        # The real file itself is still scanned.
+        assert any(f.file == "real_secret.py" for f in findings), (
+            "Real file (not a symlink) inside project root must still be scanned"
+        )
 
 
 # ---------------------------------------------------------------------------
