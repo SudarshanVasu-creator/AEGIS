@@ -175,7 +175,7 @@ before they enter any output path.
 
 ### Sub-Task 4 — Regex Secret Scanner
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Implement the file-based regex scanner that walks the target directory and emits `Finding`
