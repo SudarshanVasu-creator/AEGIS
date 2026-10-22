@@ -2,16 +2,23 @@
 
 ## Overview
 
-AEGIS is a Python CLI application that scans a local source-code project for security
-issues. All processing is local. No data leaves the machine.
+AEGIS is a Python application with a CLI and an optional PySide6 desktop GUI. Both
+entry points use the same backend to scan local project files for security issues.
+The scanning implementation does not send project source or reports to an AEGIS
+remote service. This is not a statement about operating-system telemetry, third-party
+software, or activity during the separate Windows build process.
 
 The pipeline has five stages:
 
 ```
-CLI  →  Path Validation  →  Scanner Engines  →  Redactor  →  Report Writer
-                                  ├── Bandit runner (Python AST)
-                                  └── Regex secret scanner (all text files)
+CLI or GUI  →  Path Validation  →  Scanner Engines  →  Redactor  →  Report Writer
+                                      ├── Bandit runner (Python AST, .py files)
+                                      └── Regex secret scanner (eligible text files)
 ```
+
+The GUI calls `run_scan()` on a `QThread`, receives its `ScanResult` through Qt
+signals, and uses `write_report()` when the user saves a JSON report. The CLI calls
+the same backend directly.
 
 ---
 
@@ -21,11 +28,15 @@ CLI  →  Path Validation  →  Scanner Engines  →  Redactor  →  Report Writ
 
 Entry point. Parses command-line arguments using `argparse`.
 
-- `scan --project <path> --output <file>` — runs the full pipeline.
+- `scan --project <path> [--output <file>]` — runs the full pipeline. If omitted,
+  the report is written to `aegis-report.json` in the current working directory.
 - `--version` — prints the package version and exits.
 - Validates that `--project` exists and is a directory before invoking the scanner.
-- Prints a human-readable summary to stdout (finding counts only — no secret values).
-- Exit codes: `0` success, `1` bad arguments, `2` scan failed, `3` report write failed.
+- Prints a human-readable summary without raw finding evidence or secret values.
+- Returns `0` when scanning completed and the report was written, including a
+  `PARTIAL` result; returns `1` for invalid project/output paths, `2` when all
+  scanner engines fail, and `3` when report writing fails. Argparse syntax errors
+  use argparse's standard exit status `2`.
 
 ### `aegis.models`
 
@@ -71,12 +82,17 @@ and never logs the pre-redaction value.
 ### `aegis.secret_scanner`
 
 File-based scanner. Walks the project directory with `Path.rglob("*")`. For each
-text file, applies the redactor patterns line-by-line to detect secrets.
+eligible text file, applies the implemented secret patterns line-by-line.
 
 - Skips binary files (catches `UnicodeDecodeError`, logs a warning, continues).
-- Hard-excludes: `.git/`, `__pycache__/`, `venv/`, `.venv/`, `env/`, `ENV/`,
-  `node_modules/`, files with `.pyc`/`.pyo`/`.pyd` suffixes.
+- Excludes generated and dependency directories such as `.git/`, `__pycache__/`,
+  `venv/`, `.venv/`, `env/`, `ENV/`, `node_modules/`, `dist/`, and `build/`, plus
+  configured binary/compiled file suffixes.
 - All file paths in findings are relative to the project root.
+
+This is a heuristic scanner for selected patterns, not comprehensive secret
+detection. Binary files are skipped; multi-line, encoded, or otherwise
+unrecognized values may not be detected.
 
 Returns a list of `Finding` objects with `evidence` populated and `redacted` already
 set by calling `redact()` internally.
@@ -88,9 +104,8 @@ Invokes Bandit via a safe subprocess argument list (`shell=False`) with JSON out
 
 - Maps Bandit severity + confidence levels to `aegis.Severity`.
 - Applies the same directory exclusions as `secret_scanner`.
-- Bandit emits absolute paths; the runner relativises them against the project root.
-- Redacts the `code` and `issue_text` fields from Bandit output before storing
-  `evidence`, because Bandit's `issue_text` can contain raw secret values.
+- Bandit emits paths that the runner relativises against the project root.
+- Redacts Bandit code and issue text before storing displayable evidence.
 
 Custom exceptions:
 - `BanditError` — base class for all Bandit failures.
@@ -152,15 +167,34 @@ Rejects output paths that resolve to a location inside the scanned project root
 
 ---
 
-## Privacy Guarantees (Verified by Design and Tests)
+### `aegis.gui`
 
-| Guarantee | Mechanism | Verified by |
+Optional PySide6 interface, enabled with `pip install -e ".[gui]"`.
+
+- `main.py` creates the Qt application, loads the supplied icon, and starts the
+  main window. `python -m aegis.gui` is the module entry point.
+- `worker.py` runs one `run_scan()` call per scan in a `QThread`; exceptions are
+  presented with sanitized messages.
+- `main_window.py` validates project/report paths and presents ready, scanning,
+  success, empty, partial, failed, and invalid-path states.
+- `widgets/` contains the project/report path rows, findings table and controls,
+  finding details, severity counters, and state banners.
+- The details widget displays `Finding.redacted`, not raw `Finding.evidence`.
+- `write_report()` is used for explicit JSON export. The GUI permits export for
+  successful and partial results; a fully failed scan is not offered for export.
+
+### Privacy and validation
+
+| Property | Implementation | Test coverage |
 |---|---|---|
-| No outbound network calls | No network-capable imports (`requests`, `urllib`, `socket`, `http`, `ftplib`, `smtplib`) in `src/aegis/` | Static `grep` (zero matches) |
-| No raw secret values in report | `evidence` excluded from `Finding.to_dict()`; `redacted` exported under key `"evidence"` | `test_e2e.py::test_no_raw_secrets_in_report_json` |
-| No raw secret values in console | CLI prints counts only; `redacted` field used if evidence is shown | `test_e2e.py::test_cli_scan_stdout_contains_no_raw_secrets` |
-| No modification of scanned files | Scanners are read-only; report written outside project root | `test_e2e.py::test_fixture_files_not_modified` |
-| No mandatory credentials required | All tests use synthetic fake data | All tests pass without real credentials |
+| Raw evidence excluded from JSON | `Finding.to_dict()` exports `redacted` as `evidence`; the scanner clears raw `Finding.evidence` before returning | `tests/test_models.py`, `tests/test_report.py`, `tests/test_e2e.py` |
+| Redacted output in GUI details | Detail widget reads only `Finding.redacted` | `tests/test_gui_results.py` |
+| Safe CLI output | CLI summary omits source snippets and raw evidence | `tests/test_e2e.py` |
+| Read-only scanning behavior | Scanner reads project files; report output is separately validated | `tests/test_e2e.py` |
+| Report outside scanned project | Report writer rejects a destination within the project root | `tests/test_report.py`, `tests/test_gui_redesign.py` |
+
+These tests exercise defined cases and synthetic fixtures; they do not prove that
+all possible secrets or vulnerabilities will be detected or redacted.
 
 **Not claimed (out of scope for MVP):**
 - Side-channel leaks via OS telemetry.
@@ -172,8 +206,7 @@ Rejects output paths that resolve to a location inside the scanned project root
 ## Path Containment
 
 - User-supplied path is resolved with `Path.resolve()` before any traversal.
-- All discovered file paths are validated to be within the resolved project root.
-- Symlinks outside the project root are not followed.
+- Scanner candidates are checked against the resolved project root before reading.
 - Report output path is checked: writing inside the scanned project is rejected.
 
 ---
@@ -185,7 +218,28 @@ The following are never scanned, regardless of what the user provides as the pro
 ```
 .git/
 __pycache__/
-venv/   .venv/   env/   ENV/
+.tox/   .nox/   .eggs/
+venv/   .venv/   env/   .env/   ENV/
 node_modules/
+dist/   build/
 *.pyc   *.pyo   *.pyd
 ```
+
+## Windows packaging
+
+The Windows build is maintained separately from the application entry points:
+
+- `packaging/aegis-cli.spec` creates a console-enabled CLI distribution.
+- `packaging/aegis-gui.spec` creates a windowed GUI distribution and embeds the
+  application icon assets.
+- `packaging/build.ps1` requires 64-bit Python 3.13, stages the matching Python
+  embeddable runtime and dependencies for Bandit's `sys.executable -m bandit`
+  subprocess invocation, then builds both onedir distributions.
+- `packaging/pyinstaller_runtime.py` directs the frozen application's Bandit
+  subprocess to that bundled runtime.
+
+The output directories are `dist/windows/aegis/` and
+`dist/windows/aegis-gui/`. Each `.exe` depends on its adjacent `_internal`
+directory and other generated files; it is not a standalone executable. The
+build downloads Python and installs dependencies, so build-time network access
+may be required. Keep build instructions in the README aligned with the script.

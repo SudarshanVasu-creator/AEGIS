@@ -1,5 +1,31 @@
 # AEGIS Desktop GUI — Implementation Plan
 
+> **Implementation status (2026-10-22): Complete.** This file preserves the
+> original approved design and work plan as project history. All nine subtasks
+> below are implemented. Where the original proposal differs from the shipped
+> application, use the current code, [README.md](README.md), and
+> [docs/architecture.md](docs/architecture.md) as the source of truth.
+>
+> Key implementation updates since this proposal:
+>
+> - The current workspace follows the supplied dark visual reference rather
+>   than the light palette documented below. It is a single workspace with
+>   inline state banners, not the original stacked-panel proposal.
+> - The current findings table columns are **Severity, Finding, Rule, File,
+>   Line**; it includes search, severity filters, and sorting.
+> - Windows packaging produces separate console CLI and windowed GUI **onedir**
+>   distributions. It does not produce the single dual-mode executable proposed
+>   here. Keep each executable with its generated `_internal` directory/runtime.
+> - The GUI selects a project folder and a report destination, runs the shared
+>   scanner in a background `QThread`, presents `SUCCESS`, `EMPTY`, `PARTIAL`,
+>   `FAILED`, and invalid-path states, and saves successful or partial results
+>   through the existing report writer.
+> - A successful zero-finding result is presented as `EMPTY`, but is not
+>   described as proof of security. `PARTIAL` remains partial even when it has
+>   no findings; findings returned with a failed result remain visible.
+> - The worker sanitizes unexpected scan errors; finding details display only
+>   the backend-provided redacted evidence.
+
 ## Approved Design Decisions
 
 1. **Framework:** PySide6 (Qt for Python) — see Technology Decision section for rationale.
@@ -16,7 +42,9 @@
    gives CLI only; `pip install -e ".[gui]"` adds the GUI.
 8. **GUI entry points:** `python -m aegis.gui` for developer use; `aegis-gui` console_scripts
    entry point installs as `aegis-gui.exe` when installed with the `[gui]` extra.
-9. **Packaging:** PyInstaller produces a single `aegis.exe` for Windows.
+9. **Packaging proposal (superseded):** The original proposal was a single
+   `aegis.exe` for Windows; the implementation instead builds distinct CLI and
+   GUI distributions as noted above.
 10. **Design reference:** Claude Design HTML file is a visual spec only — no JS, no
     browser runtime, no iframe protocol is reused in the desktop application.
 
@@ -262,7 +290,7 @@ pyproject.toml                    ← add PySide6 to [project.optional-dependenc
 
 ### Sub-Task 1 — Styles and Design Tokens
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Establish the PySide6 QSS stylesheet and Python colour/spacing constants that all widgets
@@ -295,7 +323,7 @@ consistent without iterating on colours later.
 
 ### Sub-Task 2 — Scan Worker Thread
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Wrap `scanner.run_scan()` in a `QThread` so the GUI never blocks the event loop during
@@ -330,7 +358,7 @@ freeze for the full duration of the Bandit subprocess.
 
 ### Sub-Task 3 — Main Window and State Machine
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Build the `MainWindow` shell with a `QStackedWidget` that transitions between the scan
@@ -365,7 +393,7 @@ machine wired to the worker's signals.
 
 ### Sub-Task 4 — Path Input and Project Selection
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Implement the project path row: a read-only line edit populated by a directory picker,
@@ -397,7 +425,7 @@ with inline validation and a clear error display for invalid paths.
 
 ### Sub-Task 5 — Findings Table and Severity Summary
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Build the results view: severity count chips above a horizontal split pane containing
@@ -439,7 +467,7 @@ the findings list on the left and a live detail panel on the right.
 
 ### Sub-Task 6 — Partial and Failed Banners
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Display clear, actionable status banners for PARTIAL and FAILED scan outcomes so users
@@ -471,7 +499,7 @@ understand when scanner errors occurred and can take action.
 
 ### Sub-Task 7 — Report Export
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Wire the Export Report button to `report.write_report()` so users can save a JSON report
@@ -504,13 +532,15 @@ to any location outside the scanned project directory.
 
 ---
 
-### Sub-Task 8 — PyInstaller Packaging
+### Sub-Task 8 — PyInstaller Packaging (original single-executable proposal)
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
-Produce a single `aegis.exe` Windows executable that users can run without installing
-Python, PySide6, or Bandit manually.
+**Original proposal, superseded:** produce a single `aegis.exe` Windows
+executable that users can run without installing Python, PySide6, or Bandit
+manually. The implemented release uses two separate onedir distributions as
+described in the implementation-status note above.
 
 **Expected Outcomes:**
 - `packaging/aegis.spec` defines a PyInstaller spec that includes all `aegis` modules,
@@ -545,7 +575,7 @@ Python, PySide6, or Bandit manually.
 
 ### Sub-Task 9 — GUI Tests
 
-**Status:** [ ] pending
+**Status:** [x] complete
 
 **Intent:**
 Add automated tests for the GUI layer that can run headlessly in CI (using Qt's offscreen
