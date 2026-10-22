@@ -243,7 +243,7 @@ into `Finding` objects.
 
 ### Sub-Task 6 — Scanner Orchestrator
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Combine both scanners, run the redactor over all findings, and return a clean list of
@@ -269,7 +269,7 @@ redacted `Finding` objects ready for the report writer.
 
 ### Sub-Task 7 — Report Writer
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Serialise findings to a structured JSON report and write it to the user-specified path.
@@ -299,7 +299,7 @@ Serialise findings to a structured JSON report and write it to the user-specifie
 
 ### Sub-Task 8 — CLI Integration
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Wire the scanner and report writer to the CLI so the full vertical slice runs end-to-end
@@ -326,7 +326,7 @@ from the command line.
 
 ### Sub-Task 9 — End-to-End Test
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Automated test that proves the full pipeline works: scan the synthetic project, validate
@@ -352,7 +352,7 @@ the JSON report, assert findings are present, assert no secrets appear in output
 
 ### Sub-Task 10 — Privacy Verification & Documentation
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Statically verify the no-network-call guarantee, document the architecture, and finalise
