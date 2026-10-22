@@ -116,7 +116,7 @@ No real credentials are required to run the tests.
 
 AEGIS is designed to keep your source code and findings private:
 
-- Runs entirely offline — no external API calls, no telemetry, no cloud storage.
+- AEGIS is designed to scan projects locally without intentionally transmitting source code or findings to remote services.
 - Detected secret values are redacted before appearing in any output or report.
 - The `evidence` field in reports always contains the *redacted* value, never the raw
   secret.
