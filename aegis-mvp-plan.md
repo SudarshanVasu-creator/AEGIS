@@ -209,7 +209,7 @@ objects for detected secrets.
 
 ### Sub-Task 5 — Bandit Runner
 
-**Status:** [ ] pending
+**Status:** [x] done
 
 **Intent:**
 Wrap Bandit's Python API to run against the target directory and convert its output
