@@ -1,16 +1,29 @@
 # AEGIS — Application Security & Inspection System
+[![Python](https://img.shields.io/badge/Python-3.13%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Bandit](https://img.shields.io/badge/Security%20Analysis-Bandit-orange)](https://bandit.readthedocs.io/)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/)
+[![Status](https://img.shields.io/badge/status-MVP%20complete-success)](#project-status)
 
-A privacy-first, local source-code security scanner.
-AEGIS examines a user-selected project directory, identifies common security issues,
-redacts sensitive evidence, and produces a structured JSON report with remediation guidance.
+AEGIS is a privacy-focused, local source-code security scanner that detects common Python security issues and potential hardcoded secrets. It combines Bandit-based static analysis with custom secret-detection rules, redacts sensitive evidence, and generates structured JSON reports with remediation guidance.
 
-**All scanning runs locally. No source code, secrets, or reports are sent anywhere.**
+**AEGIS is designed to scan projects locally without intentionally uploading source code, detected secrets, or reports to a remote service.**
+
+---
+
+## Architecture
+
+The diagram below illustrates the high-level architecture of AEGIS,
+from project path validation through security analysis and JSON report generation.
+
+![AEGIS high-level architecture](docs/image/aegis-architecture.png)
+
+*Figure 1. High-level architecture of AEGIS MVP.*
 
 ---
 
 ## Features (MVP)
 
-- Python AST-based security analysis via [Bandit](https://bandit.readthedocs.io/)
+- Python AST-based security analysis via [Bandit](https://bandit.readthedocs.io/). The current security-analysis engine targets Python code.
 - Regex-based secret detection (AWS keys, GitHub tokens, API keys, hardcoded passwords)
 - Automatic redaction of detected secret values before any report or console output
 - Structured JSON report with severity, file, line number, evidence (redacted), and
@@ -31,8 +44,8 @@ redacts sensitive evidence, and produces a structured JSON report with remediati
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/aegis.git
-cd aegis
+git clone https://github.com/SudarshanVasu-creator/AEGIS
+cd AEGIS
 
 # 2. Create and activate a dedicated virtual environment
 python -m venv .venv
@@ -75,9 +88,9 @@ aegis scan --help
 
 | Code | Meaning |
 |------|---------|
-| `0`  | Scan completed successfully |
-| `1`  | Invalid arguments (bad path, missing flags) |
-| `2`  | Scan failed (both scanner engines encountered errors) |
+| `0`  | A report was written; inspect scan_status for SUCCESS or PARTIAL |
+| `1`  | Invalid arguments or unsafe input/output path |
+| `2`  | All scanner engines failed |
 | `3`  | Report could not be written |
 
 ---
@@ -116,6 +129,7 @@ AEGIS is designed to keep your source code and findings private:
 **Caveats:** These guarantees apply to AEGIS itself. AEGIS does not control OS-level
 telemetry, editor integrations, or the security of the output report file after it
 is written.
+AEGIS redacts recognized secret patterns before including finding evidence in reports. Detection and redaction are pattern-based and cannot guarantee that every possible secret format will be recognized.
 
 See [docs/architecture.md](docs/architecture.md) for a full description of the design
 and the specific tests that verify each guarantee.
