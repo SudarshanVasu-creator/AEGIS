@@ -11,11 +11,23 @@ dependencies = [
     "bandit>=1.8.0",
 ]
 
+[project.optional-dependencies]
+gui = [
+    "PySide6>=6.6",
+]
+
 [project.scripts]
 aegis = "aegis.cli:main"
+aegis-gui = "aegis.gui.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.data-files]
+"assets/icons" = [
+    "assets/icons/aegis-icon.png",
+    "assets/icons/aegis.ico",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
