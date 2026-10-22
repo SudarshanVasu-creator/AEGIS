@@ -1,0 +1,45 @@
+# === Virtual environments ===
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# === Python cache & build ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# === Environment / secrets ===
+.env
+*.env
+*.secret
+*.key
+
+# === Test & coverage artefacts ===
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# === AEGIS generated reports ===
+reports/
+*.aegis-report.json
+
+# === IDEs ===
+.vscode/settings.json
+.idea/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Scanned projects ===
+# Never commit a real project being scanned.
+# Add its path here if it lives inside this repo directory.
